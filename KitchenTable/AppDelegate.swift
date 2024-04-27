@@ -7,6 +7,7 @@
 
 import Cocoa
 import EventKit
+import Swifter
 
 extension Date {
     var hour: Int {
@@ -35,6 +36,8 @@ extension Date {
     }
 }
 
+let server = HttpServer()
+
 
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -47,24 +50,56 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @IBOutlet weak var date_label: NSTextField!
     var store = EKEventStore()
     let timeFormatter = DateFormatter()
-
+    var pngData: Data?
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         timeFormatter.dateFormat = "HH:mm"
+        
+        server["/hello"] = { .ok(.htmlBody("You asked for \($0)"))  }
+        server["/image"] = { r in
+            return HttpResponse.raw(200, "OK", [:], {
+                try? $0.write(self.pngData!)
+            })
+        }
+        do {
+            try server.start(8123)
+        }
+        catch {
+            NSLog("Failed to start server")
+            assert(false)
+        }
 
         if #available(macOS 14, *) {
             store.requestFullAccessToEvents { [self] granted, error in
                 if granted {
-                    DispatchQueue.main.async { [self]
+                    DispatchQueue.main.async {
                         self.readCalendar()
                         self.updateDisplay()
                     }
                 }
+                else {
+                    let alert = NSAlert()
+                    alert.messageText = "Error getting calendar access"
+                    alert.addButton(withTitle: "OK")
+                    alert.alertStyle = .critical
+                    alert.runModal()
+                }
             }
         }
         else {
-            readCalendar()
-            updateDisplay()
+            store.requestAccess(to: .event, completion: { granted,_ in
+                if granted {
+                    self.readCalendar()
+                    self.updateDisplay()
+                }
+                else {
+                    let alert = NSAlert()
+                    alert.messageText = "Error getting calendar access"
+                    alert.addButton(withTitle: "OK")
+                    alert.alertStyle = .critical
+                    alert.runModal()
+                }
+            })
         }
     }
     
@@ -86,11 +121,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         guard let imgData = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
             assert(false)
+            return
         }
         
         view.cacheDisplay(in: view.bounds, to: imgData)
         view.unlockFocus()
-        let pngData = imgData.representation(using: .png, properties: [:])
+        pngData = imgData.representation(using: .png, properties: [:])
         do {
             let path = URL.init(fileURLWithPath: "output.png")
             NSLog(path.absoluteString)
@@ -99,7 +135,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         catch {
             assert(false)
         }
-        NSLog("bar")
     }
     
     @MainActor
@@ -126,7 +161,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         self.am_label.stringValue = am_events.joined(separator: "\n")
         self.pm_label.stringValue = pm_events.joined(separator: "\n")
-        NSLog("foo")
     }
 
    
