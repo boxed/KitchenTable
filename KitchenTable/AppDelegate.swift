@@ -50,12 +50,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @IBOutlet weak var date_label: NSTextField!
     var store = EKEventStore()
     let timeFormatter = DateFormatter()
+    var lastChanged: Date = Date()
     var pngData: Data?
+    var timer: Timer?
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
+        timer = Timer.scheduledTimer(
+            withTimeInterval: 5,
+            repeats: true,
+            block: {_ in
+                self.updateDisplay()
+            }
+        )
+        
         timeFormatter.dateFormat = "HH:mm"
         
-        server["/hello"] = { .ok(.htmlBody("You asked for \($0)"))  }
+        server["/last_changed"] = { r in
+            return HttpResponse.ok(.text("\(self.lastChanged.timeIntervalSince1970)"))
+        }
         server["/image"] = { r in
             return HttpResponse.raw(200, "OK", [:], {
                 try? $0.write(self.pngData!)
@@ -105,6 +117,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     @MainActor
     func updateDisplay() {
+        let prev_changed = lastChanged
+        readCalendar()
         let now = Date()
         let weekday_name_by_number = [
             2: "Måndag",
@@ -113,27 +127,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             5: "Torsdag",
             6: "Fredag",
             7: "Lördag",
-            0: "Söndag",
+            1: "Söndag",
         ]
         
-        weekday_label.stringValue = weekday_name_by_number[now.weekday]!
-        date_label.stringValue = "\(now.day)"
-        
-        guard let imgData = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
-            assert(false)
-            return
+        let new_weekday_label = weekday_name_by_number[now.weekday]!
+        if weekday_label.stringValue != new_weekday_label {
+            weekday_label.stringValue = new_weekday_label
+            lastChanged = Date()
+        }
+        let new_dateLabel = "\(now.day)"
+        if date_label.stringValue != new_dateLabel {
+            date_label.stringValue = new_dateLabel
+            lastChanged = Date()
         }
         
-        view.cacheDisplay(in: view.bounds, to: imgData)
-        view.unlockFocus()
-        pngData = imgData.representation(using: .png, properties: [:])
-        do {
-            let path = URL.init(fileURLWithPath: "output.png")
-            NSLog(path.absoluteString)
-            try pngData!.write(to: path, options: .atomic)
-        }
-        catch {
-            assert(false)
+        if lastChanged != prev_changed {
+            NSLog("new image")
+
+            guard let imgData = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
+                assert(false)
+                return
+            }
+            
+            view.cacheDisplay(in: view.bounds, to: imgData)
+            view.unlockFocus()
+            pngData = imgData.representation(using: .png, properties: [:])
+            /*
+            do {
+                let path = URL.init(fileURLWithPath: "output.png")
+                NSLog(path.absoluteString)
+                try pngData!.write(to: path, options: .atomic)
+            }
+            catch {
+                assert(false)
+            }
+             */
         }
     }
     
@@ -159,8 +187,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         
-        self.am_label.stringValue = am_events.joined(separator: "\n")
-        self.pm_label.stringValue = pm_events.joined(separator: "\n")
+        let new_am_label = am_events.joined(separator: "\n")
+        if new_am_label != self.am_label.stringValue {
+            lastChanged = Date()
+        }
+        self.am_label.stringValue = new_am_label
+        
+        let new_pm_label = pm_events.joined(separator: "\n")
+        if new_pm_label != self.pm_label.stringValue {
+            lastChanged = Date()
+        }
+        self.pm_label.stringValue = new_pm_label
     }
 
    
