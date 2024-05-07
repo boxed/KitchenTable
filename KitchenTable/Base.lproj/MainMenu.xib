@@ -17,6 +17,8 @@
             <connections>
                 <outlet property="am_label" destination="Fqt-Jr-xYu" id="ebV-x8-4pK"/>
                 <outlet property="date_label" destination="4wU-xq-TeP" id="8hx-Td-xHx"/>
+                <outlet property="errors" destination="Atv-ql-duX" id="3Bn-ge-kBN"/>
+                <outlet property="image" destination="lJj-sH-awT" id="iuP-iH-y4x"/>
                 <outlet property="pm_label" destination="tTv-IB-EOj" id="FSp-MS-NtM"/>
                 <outlet property="view" destination="EiT-Mj-1SZ" id="MIx-DL-2dz"/>
                 <outlet property="weekday_label" destination="530-vW-NFB" id="wog-zj-GGl"/>
@@ -690,7 +692,7 @@
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="335" y="390" width="960" height="540"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1575"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="1440" height="875"/>
             <view key="contentView" wantsLayer="YES" id="EiT-Mj-1SZ">
                 <rect key="frame" x="0.0" y="0.0" width="960" height="540"/>
                 <autoresizingMask key="autoresizingMask"/>
@@ -698,9 +700,9 @@
                     <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="530-vW-NFB">
                         <rect key="frame" x="531" y="470" width="431" height="63"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                        <textFieldCell key="cell" lineBreakMode="clipping" alignment="center" title="- weekday -" id="rRK-x3-Uc5">
+                        <textFieldCell key="cell" lineBreakMode="clipping" alignment="center" id="rRK-x3-Uc5">
                             <font key="font" size="43" name="Helvetica-Light"/>
-                            <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                            <color key="textColor" red="1" green="1" blue="1" alpha="0.84705882352941175" colorSpace="custom" customColorSpace="displayP3"/>
                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                         </textFieldCell>
                     </textField>
@@ -711,27 +713,41 @@
                     <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Fqt-Jr-xYu">
                         <rect key="frame" x="10" y="294" width="521" height="226"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                        <textFieldCell key="cell" selectable="YES" title="Multiline Label" id="Mlj-eI-Qgr">
+                        <textFieldCell key="cell" selectable="YES" id="Mlj-eI-Qgr">
                             <font key="font" size="33" name="Helvetica-Light"/>
-                            <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                            <color key="textColor" red="1" green="1" blue="1" alpha="0.84705882352941175" colorSpace="custom" customColorSpace="displayP3"/>
                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                         </textFieldCell>
                     </textField>
                     <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="tTv-IB-EOj">
                         <rect key="frame" x="10" y="20" width="542" height="255"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                        <textFieldCell key="cell" selectable="YES" title="Multiline Label" id="m6L-ny-17J">
+                        <textFieldCell key="cell" selectable="YES" id="m6L-ny-17J">
                             <font key="font" size="33" name="Helvetica-Light"/>
-                            <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                            <color key="textColor" red="1" green="1" blue="1" alpha="0.84705882352941175" colorSpace="custom" customColorSpace="displayP3"/>
                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                         </textFieldCell>
                     </textField>
                     <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="4wU-xq-TeP">
                         <rect key="frame" x="531" y="110" width="431" height="405"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                        <textFieldCell key="cell" lineBreakMode="clipping" alignment="center" title="XX" id="JES-dw-f8W">
+                        <textFieldCell key="cell" lineBreakMode="clipping" alignment="center" id="JES-dw-f8W">
                             <font key="font" size="317" name="Helvetica"/>
-                            <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                            <color key="textColor" red="1" green="1" blue="1" alpha="0.84705882352941175" colorSpace="custom" customColorSpace="displayP3"/>
+                            <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                        </textFieldCell>
+                    </textField>
+                    <imageView horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="QTT-xF-cRb">
+                        <rect key="frame" x="660" y="14" width="172" height="172"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <imageCell key="cell" refusesFirstResponder="YES" alignment="left" imageScaling="proportionallyDown" id="lJj-sH-awT"/>
+                    </imageView>
+                    <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Atv-ql-duX">
+                        <rect key="frame" x="10" y="14" width="922" height="82"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <textFieldCell key="cell" selectable="YES" id="rcS-sr-fdh">
+                            <font key="font" size="33" name="Helvetica-Light"/>
+                            <color key="textColor" red="1" green="1" blue="1" alpha="0.84705882352941175" colorSpace="custom" customColorSpace="displayP3"/>
                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                         </textFieldCell>
                     </textField>
