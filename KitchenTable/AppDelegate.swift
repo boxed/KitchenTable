@@ -72,6 +72,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             repeats: true,
             block: {_ in
                 self.dateUpdater()
+                self.readCalendar()
             }
         )
         
