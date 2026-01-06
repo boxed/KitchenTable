@@ -63,6 +63,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var task: URLSessionDataTask?
     
     func applicationDidFinishLaunching(_ aNotification: Notification) {
+        window.isRestorable = false
+        window.setFrameAutosaveName("MainWindow")
         view.layer?.backgroundColor = .white
         
         dateUpdater()
@@ -71,17 +73,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             withTimeInterval: 5,
             repeats: true,
             block: {_ in
-                self.dateUpdater()
-                self.readCalendar()
+                DispatchQueue.main.async {
+                    self.dateUpdater()
+                    self.readCalendar()
+                }
             }
         )
         
         timeFormatter.dateFormat = "HH:mm"
         
         server["/last_changed"] = { r in
+            DispatchQueue.main.async {
+                self.window.title = "\(Date().description)"
+            }
             return HttpResponse.ok(.text("\(self.lastChanged.timeIntervalSince1970)"))
         }
         server["/image"] = { r in
+            DispatchQueue.main.async {
+                self.window.title = "\(Date().description)"
+            }
             return HttpResponse.raw(200, "OK", [:], {
                 try? $0.write(self.pngData!)
             })
@@ -109,7 +119,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         else {
             store.requestAccess(to: .event, completion: { granted,_ in
                 if granted {
-                    self.readCalendar()
+                    DispatchQueue.main.async {
+                        self.readCalendar()
+                    }
                 }
                 else {
                     self.setError("Error getting calendar access")
