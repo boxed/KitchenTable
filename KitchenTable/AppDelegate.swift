@@ -72,19 +72,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         timer = Timer.scheduledTimer(
             withTimeInterval: 5,
             repeats: true,
-            block: {_ in
+            block: { [weak self] _ in
                 DispatchQueue.main.async {
-                    self.dateUpdater()
-                    self.readCalendar()
+                    self?.dateUpdater()
+                    self?.readCalendar()
                 }
             }
         )
         
         timeFormatter.dateFormat = "HH:mm"
         
-        server["/last_changed"] = { r in
+        server["/last_changed"] = { [weak self] r in
             let battery = r.queryParams.first(where: { $0.0 == "battery" })?.1
             DispatchQueue.main.async {
+                guard let self = self else { return }
                 if let battery = battery {
                     self.window.title = "\(Date().description) - Battery: \(battery)"
                 } else {
@@ -107,14 +108,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             let secondsUntilTarget = Int(target.timeIntervalSince(now))
 
-            return HttpResponse.ok(.text("\(self.lastChanged.timeIntervalSince1970)\n\(secondsUntilTarget)"))
+            return HttpResponse.ok(.text("\(self?.lastChanged.timeIntervalSince1970 ?? 0)\n\(secondsUntilTarget)"))
         }
-        server["/image"] = { r in
+        server["/image"] = { [weak self] r in
             DispatchQueue.main.async {
-                self.window.title = "\(Date().description)"
+                self?.window.title = "\(Date().description)"
             }
             return HttpResponse.raw(200, "OK", [:], {
-                try? $0.write(self.pngData!)
+                if let pngData = self?.pngData {
+                    try? $0.write(pngData)
+                }
             })
         }
         do {
@@ -126,26 +129,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         self.readWeather()
         if #available(macOS 14, *) {
-            store.requestFullAccessToEvents { [self] granted, error in
+            store.requestFullAccessToEvents { [weak self] granted, error in
                 if granted {
                     DispatchQueue.main.async {
-                        self.readCalendar()
+                        self?.readCalendar()
                     }
                 }
                 else {
-                    self.setError("Error getting calendar access")
+                    self?.setError("Error getting calendar access")
                 }
             }
         }
         else {
-            store.requestAccess(to: .event, completion: { granted,_ in
+            store.requestAccess(to: .event, completion: { [weak self] granted,_ in
                 if granted {
                     DispatchQueue.main.async {
-                        self.readCalendar()
+                        self?.readCalendar()
                     }
                 }
                 else {
-                    self.setError("Error getting calendar access")
+                    self?.setError("Error getting calendar access")
                 }
             })
         }
@@ -274,36 +277,38 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         NSLog("getting: \(url)")
         let request = URLRequest(url: url)
-        task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+        task = URLSession.shared.dataTask(with: request) { [weak self] (data, response, error) in
+            guard let self = self else { return }
             if let response = response as? HTTPURLResponse {
                 NSLog("got response")
-                
+
                 if response.statusCode == 503 {
                     self.setError("failed to get data, \(response.statusCode)")
                     return
                 }
-                
+
                 if error != nil {
                     self.setError("\(error.debugDescription)")
                     return
                 }
-                
+
                 do {
                     if let data = data {
                         let string1 = String(data: data, encoding: String.Encoding.utf8) ?? "Data could not be printed"
                         NSLog(string1)
                         let decoder = JSONDecoder()
-                        
+
                         let dateFormatter = DateFormatter()
                         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
-                        
+
                         decoder.dateDecodingStrategy = JSONDecoder.DateDecodingStrategy.secondsSince1970
                         let result = try decoder.decode(OMWeatherData.self, from: data)
                         NSLog("Parsed!")
 
                         self.timeOfWeatherData = Date()
-                        
-                        DispatchQueue.main.async {
+
+                        DispatchQueue.main.async { [weak self] in
+                            guard let self = self else { return }
                             NSLog("image set...")
                             // Sun icon = needs sunscreen
                             if result.daily.uv_index_max[0] >= 3 {
@@ -331,7 +336,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                                     self.dataChanged = Date()
                                 }
                             }
-                            
+
                             self.updateDisplay()
                         }
                         NSLog("Parsed! 5")
@@ -345,7 +350,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             else {
                 self.setError("\(error.debugDescription)")
             }
-            
+
         }
         NSLog("start task")
         task!.resume()
