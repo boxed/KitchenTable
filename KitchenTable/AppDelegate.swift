@@ -83,10 +83,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         timeFormatter.dateFormat = "HH:mm"
         
         server["/last_changed"] = { r in
+            let battery = r.queryParams.first(where: { $0.0 == "battery" })?.1
             DispatchQueue.main.async {
-                self.window.title = "\(Date().description)"
+                if let battery = battery {
+                    self.window.title = "\(Date().description) - Battery: \(battery)"
+                } else {
+                    self.window.title = "\(Date().description)"
+                }
             }
-            return HttpResponse.ok(.text("\(self.lastChanged.timeIntervalSince1970)"))
+            // Calculate seconds until 00:10 (ten minutes past midnight)
+            let now = Date()
+            let calendar = Calendar.current
+            var targetComponents = calendar.dateComponents([.year, .month, .day], from: now)
+            targetComponents.hour = 0
+            targetComponents.minute = 10
+            targetComponents.second = 0
+            var target = calendar.date(from: targetComponents)!
+
+            // If we're past 00:10 today, target tomorrow's 00:10
+            if now >= target {
+                target = calendar.date(byAdding: .day, value: 1, to: target)!
+            }
+
+            let secondsUntilTarget = Int(target.timeIntervalSince(now))
+
+            return HttpResponse.ok(.text("\(self.lastChanged.timeIntervalSince1970)\n\(secondsUntilTarget)"))
         }
         server["/image"] = { r in
             DispatchQueue.main.async {
@@ -161,15 +182,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if self.dataChanged == self.lastChanged {
             return
         }
-        
+
         NSLog("new image")
 
-        guard let imgData = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
+        // Always render at exactly 960x540 pixels regardless of screen scale
+        let targetWidth = 960
+        let targetHeight = 540
+
+        guard let imgData = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: targetWidth,
+            pixelsHigh: targetHeight,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ) else {
             assert(false)
             return
         }
-        
-        view.cacheDisplay(in: view.bounds, to: imgData)
+
+        imgData.size = view.bounds.size
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: imgData)
+        view.displayIgnoringOpacity(view.bounds, in: NSGraphicsContext.current!)
+        NSGraphicsContext.restoreGraphicsState()
+
         pngData = imgData.representation(using: .png, properties: [:])
         self.lastChanged = dataChanged
         /*
@@ -290,10 +332,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                                 }
                             }
                             
-                            while Date() == self.lastChanged {
-                                Thread.sleep(forTimeInterval: 1)
-                            }
-                            NSLog("updateDisplay")
                             self.updateDisplay()
                         }
                         NSLog("Parsed! 5")

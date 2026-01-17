@@ -17,7 +17,6 @@
                 <outlet property="am_label" destination="Fqt-Jr-xYu" id="ebV-x8-4pK"/>
                 <outlet property="date_label" destination="4wU-xq-TeP" id="8hx-Td-xHx"/>
                 <outlet property="errors" destination="Atv-ql-duX" id="3Bn-ge-kBN"/>
-                <outlet property="image" destination="lJj-sH-awT" id="iuP-iH-y4x"/>
                 <outlet property="leftImage" destination="WLB-75-Z4P" id="HiP-an-Vjz"/>
                 <outlet property="pm_label" destination="tTv-IB-EOj" id="FSp-MS-NtM"/>
                 <outlet property="rightImage" destination="QTT-xF-cRb" id="CTf-rQ-kHT"/>
