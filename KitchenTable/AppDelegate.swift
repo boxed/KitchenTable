@@ -15,25 +15,41 @@ extension Date {
     var hour: Int {
         get {
             let components = Calendar.current.dateComponents([.hour], from: self)
-            return components.hour!
+            guard let hour = components.hour else {
+                NSLog("ERROR: Failed to get hour from date: \(self)")
+                return 0
+            }
+            return hour
         }
     }
     var minute: Int {
         get {
             let components = Calendar.current.dateComponents([.minute], from: self)
-            return components.minute!
+            guard let minute = components.minute else {
+                NSLog("ERROR: Failed to get minute from date: \(self)")
+                return 0
+            }
+            return minute
         }
     }
     var weekday: Int {
         get {
             let components = Calendar.current.dateComponents([.weekday], from: self)
-            return components.weekday!
+            guard let weekday = components.weekday else {
+                NSLog("ERROR: Failed to get weekday from date: \(self)")
+                return 1
+            }
+            return weekday
         }
     }
     var day: Int {
         get {
             let components = Calendar.current.dateComponents([.day], from: self)
-            return components.day!
+            guard let day = components.day else {
+                NSLog("ERROR: Failed to get day from date: \(self)")
+                return 1
+            }
+            return day
         }
     }
 }
@@ -99,11 +115,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             targetComponents.hour = 0
             targetComponents.minute = 10
             targetComponents.second = 0
-            var target = calendar.date(from: targetComponents)!
+            guard var target = calendar.date(from: targetComponents) else {
+                NSLog("ERROR: Failed to create target date from components")
+                return HttpResponse.ok(.text("\(self?.lastChanged.timeIntervalSince1970 ?? 0)\n0"))
+            }
 
             // If we're past 00:10 today, target tomorrow's 00:10
             if now >= target {
-                target = calendar.date(byAdding: .day, value: 1, to: target)!
+                guard let nextDay = calendar.date(byAdding: .day, value: 1, to: target) else {
+                    NSLog("ERROR: Failed to add day to target date")
+                    return HttpResponse.ok(.text("\(self?.lastChanged.timeIntervalSince1970 ?? 0)\n0"))
+                }
+                target = nextDay
             }
 
             let secondsUntilTarget = Int(target.timeIntervalSince(now))
@@ -167,7 +190,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             1: "Söndag",
         ]
         
-        let new_weekday_label = weekday_name_by_number[now.weekday]!
+        guard let new_weekday_label = weekday_name_by_number[now.weekday] else {
+            NSLog("ERROR: Failed to get weekday name for weekday number: \(now.weekday)")
+            return
+        }
         if self.weekday_label.stringValue != new_weekday_label {
             self.weekday_label.stringValue = new_weekday_label
             self.dataChanged = Date()
@@ -204,19 +230,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             bytesPerRow: 0,
             bitsPerPixel: 0
         ) else {
-            assert(false)
+            NSLog("ERROR: Failed to create NSBitmapImageRep for image rendering")
             return
         }
 
         imgData.size = view.bounds.size
 
         NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: imgData)
-        view.displayIgnoringOpacity(view.bounds, in: NSGraphicsContext.current!)
+        guard let context = NSGraphicsContext(bitmapImageRep: imgData) else {
+            NSLog("ERROR: Failed to create NSGraphicsContext from bitmap")
+            NSGraphicsContext.restoreGraphicsState()
+            return
+        }
+        NSGraphicsContext.current = context
+        view.displayIgnoringOpacity(view.bounds, in: context)
         NSGraphicsContext.restoreGraphicsState()
 
-        pngData = imgData.representation(using: .png, properties: [:])
-        self.lastChanged = dataChanged
+        // Move PNG compression to background thread to avoid blocking main thread
+        let currentDataChanged = dataChanged
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let startTime = Date()
+            guard let png = imgData.representation(using: .png, properties: [:]) else {
+                NSLog("ERROR: Failed to create PNG representation from bitmap")
+                return
+            }
+            let elapsed = Date().timeIntervalSince(startTime)
+            if elapsed > 1.0 {
+                NSLog("WARNING: PNG compression took \(elapsed) seconds")
+            }
+            DispatchQueue.main.async {
+                self?.pngData = png
+                self?.lastChanged = currentDataChanged
+            }
+        }
         /*
         do {
             let path = URL.init(fileURLWithPath: "output.png")
@@ -313,8 +359,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                             // Sun icon = needs sunscreen
                             if result.daily.uv_index_max[0] >= 3 {
                                 if self.rightImage.image == nil {
-                                    self.rightImage.image = NSImage(systemSymbolName: "sun.max", variableValue: 0, accessibilityDescription: "")!
-                                    self.dataChanged = Date()
+                                    if let sunImage = NSImage(systemSymbolName: "sun.max", variableValue: 0, accessibilityDescription: "") {
+                                        self.rightImage.image = sunImage
+                                        self.dataChanged = Date()
+                                    } else {
+                                        NSLog("ERROR: Failed to create sun.max system symbol image")
+                                    }
                                 }
                             }
                             else {
@@ -326,8 +376,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                             // Rain icon == needs rain gear
                             if result.daily.rain_sum[0] >= 10 {
                                 if self.leftImage.image == nil {
-                                    self.leftImage.image = NSImage(systemSymbolName: "cloud.heavyrain", variableValue: 0, accessibilityDescription: "")!
-                                    self.dataChanged = Date()
+                                    if let rainImage = NSImage(systemSymbolName: "cloud.heavyrain", variableValue: 0, accessibilityDescription: "") {
+                                        self.leftImage.image = rainImage
+                                        self.dataChanged = Date()
+                                    } else {
+                                        NSLog("ERROR: Failed to create cloud.heavyrain system symbol image")
+                                    }
                                 }
                             }
                             else {
@@ -353,7 +407,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         }
         NSLog("start task")
-        task!.resume()
+        guard let task = task else {
+            NSLog("ERROR: Failed to create URLSessionDataTask")
+            return
+        }
+        task.resume()
     }
 
    
