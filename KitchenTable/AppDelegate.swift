@@ -76,6 +76,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var pngData: Data?
     var timer: Timer?
     var timeOfWeatherData = Date.distantPast
+    var timeOfCalendarRead = Date.distantPast
     var task: URLSessionDataTask?
     
     func applicationDidFinishLaunching(_ aNotification: Notification) {
@@ -90,8 +91,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             repeats: true,
             block: { [weak self] _ in
                 DispatchQueue.main.async {
-                    self?.dateUpdater()
-                    self?.readCalendar()
+                    autoreleasepool {
+                        self?.dateUpdater()
+                        self?.readCalendar()
+                        self?.readWeather()
+                    }
                 }
             }
         )
@@ -249,18 +253,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Move PNG compression to background thread to avoid blocking main thread
         let currentDataChanged = dataChanged
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let startTime = Date()
-            guard let png = imgData.representation(using: .png, properties: [:]) else {
-                NSLog("ERROR: Failed to create PNG representation from bitmap")
-                return
-            }
-            let elapsed = Date().timeIntervalSince(startTime)
-            if elapsed > 1.0 {
-                NSLog("WARNING: PNG compression took \(elapsed) seconds")
-            }
-            DispatchQueue.main.async {
-                self?.pngData = png
-                self?.lastChanged = currentDataChanged
+            autoreleasepool {
+                let startTime = Date()
+                guard let png = imgData.representation(using: .png, properties: [:]) else {
+                    NSLog("ERROR: Failed to create PNG representation from bitmap")
+                    return
+                }
+                let elapsed = Date().timeIntervalSince(startTime)
+                if elapsed > 1.0 {
+                    NSLog("WARNING: PNG compression took \(elapsed) seconds")
+                }
+                DispatchQueue.main.async {
+                    self?.pngData = png
+                    self?.lastChanged = currentDataChanged
+                }
             }
         }
         /*
@@ -277,6 +283,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     @MainActor
     func readCalendar() {
+        guard Date().timeIntervalSince(timeOfCalendarRead) > 60*60 else { return }
+        timeOfCalendarRead = Date()
         var am_events: [String] = []
         var pm_events: [String] = []
         let startOfToday = Calendar.current.startOfDay(for: Date())
@@ -325,6 +333,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let request = URLRequest(url: url)
         task = URLSession.shared.dataTask(with: request) { [weak self] (data, response, error) in
             guard let self = self else { return }
+            defer { DispatchQueue.main.async { self.task = nil } }
             if let response = response as? HTTPURLResponse {
                 NSLog("got response")
 
