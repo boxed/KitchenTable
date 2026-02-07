@@ -7,7 +7,7 @@
 
 import Cocoa
 import EventKit
-import Swifter
+import Network
 
 let loc = CLLocation(latitude: 59.41789, longitude: 17.95551)
 
@@ -54,9 +54,6 @@ extension Date {
     }
 }
 
-let server = HttpServer()
-
-
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
 
@@ -78,6 +75,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var timeOfWeatherData = Date.distantPast
     var timeOfCalendarRead = Date.distantPast
     var task: URLSessionDataTask?
+    var listener: NWListener?
     
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         window.isRestorable = false
@@ -102,57 +100,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         timeFormatter.dateFormat = "HH:mm"
         
-        server["/last_changed"] = { [weak self] r in
-            let battery = r.queryParams.first(where: { $0.0 == "battery" })?.1
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                if let battery = battery {
-                    self.window.title = "\(Date().description) - Battery: \(battery)"
-                } else {
-                    self.window.title = "\(Date().description)"
-                }
-            }
-            // Calculate seconds until 00:10 (ten minutes past midnight)
-            let now = Date()
-            let calendar = Calendar.current
-            var targetComponents = calendar.dateComponents([.year, .month, .day], from: now)
-            targetComponents.hour = 0
-            targetComponents.minute = 10
-            targetComponents.second = 0
-            guard var target = calendar.date(from: targetComponents) else {
-                NSLog("ERROR: Failed to create target date from components")
-                return HttpResponse.ok(.text("\(self?.lastChanged.timeIntervalSince1970 ?? 0)\n0"))
-            }
-
-            // If we're past 00:10 today, target tomorrow's 00:10
-            if now >= target {
-                guard let nextDay = calendar.date(byAdding: .day, value: 1, to: target) else {
-                    NSLog("ERROR: Failed to add day to target date")
-                    return HttpResponse.ok(.text("\(self?.lastChanged.timeIntervalSince1970 ?? 0)\n0"))
-                }
-                target = nextDay
-            }
-
-            let secondsUntilTarget = Int(target.timeIntervalSince(now))
-
-            return HttpResponse.ok(.text("\(self?.lastChanged.timeIntervalSince1970 ?? 0)\n\(secondsUntilTarget)"))
-        }
-        server["/image"] = { [weak self] r in
-            DispatchQueue.main.async {
-                self?.window.title = "\(Date().description)"
-            }
-            return HttpResponse.raw(200, "OK", [:], {
-                if let pngData = self?.pngData {
-                    try? $0.write(pngData)
-                }
-            })
-        }
         do {
-            try server.start(8123)
-        }
-        catch {
+            listener = try NWListener(using: .tcp, on: 8123)
+        } catch {
             setError("Failed to start server")
         }
+        listener?.newConnectionHandler = { [weak self] connection in
+            self?.handleHTTPConnection(connection)
+        }
+        listener?.start(queue: .global())
 
         self.readWeather()
         if #available(macOS 14, *) {
@@ -424,6 +380,88 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
    
+    func handleHTTPConnection(_ connection: NWConnection) {
+        connection.start(queue: .global())
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, _, _ in
+            guard let self = self else {
+                connection.cancel()
+                return
+            }
+
+            guard let data = data,
+                  let request = String(data: data, encoding: .utf8),
+                  let requestLine = request.split(separator: "\r\n").first else {
+                connection.cancel()
+                return
+            }
+
+            let parts = requestLine.split(separator: " ")
+            guard parts.count >= 2 else {
+                connection.cancel()
+                return
+            }
+
+            let fullPath = String(parts[1])
+            let pathAndQuery = fullPath.split(separator: "?", maxSplits: 1)
+            let path = String(pathAndQuery[0])
+            let query = pathAndQuery.count > 1 ? String(pathAndQuery[1]) : ""
+
+            switch path {
+            case "/last_changed":
+                let battery = query.split(separator: "&").compactMap { p -> String? in
+                    let kv = p.split(separator: "=", maxSplits: 1)
+                    return kv.count == 2 && kv[0] == "battery" ? String(kv[1]) : nil
+                }.first
+
+                DispatchQueue.main.async {
+                    if let battery = battery {
+                        self.window.title = "\(Date().description) - Battery: \(battery)"
+                    } else {
+                        self.window.title = "\(Date().description)"
+                    }
+                }
+
+                let now = Date()
+                let calendar = Calendar.current
+                var targetComponents = calendar.dateComponents([.year, .month, .day], from: now)
+                targetComponents.hour = 0
+                targetComponents.minute = 10
+                targetComponents.second = 0
+
+                var secondsUntilTarget = 0
+                if var target = calendar.date(from: targetComponents) {
+                    if now >= target {
+                        if let nextDay = calendar.date(byAdding: .day, value: 1, to: target) {
+                            target = nextDay
+                        }
+                    }
+                    secondsUntilTarget = Int(target.timeIntervalSince(now))
+                }
+
+                let body = "\(self.lastChanged.timeIntervalSince1970)\n\(secondsUntilTarget)"
+                self.sendHTTPResponse(connection: connection, contentType: "text/plain", body: Data(body.utf8))
+
+            case "/image":
+                DispatchQueue.main.async {
+                    self.window.title = "\(Date().description)"
+                }
+                self.sendHTTPResponse(connection: connection, contentType: "image/png", body: self.pngData ?? Data())
+
+            default:
+                self.sendHTTPResponse(connection: connection, status: "404 Not Found", contentType: "text/plain", body: Data("Not Found".utf8))
+            }
+        }
+    }
+
+    func sendHTTPResponse(connection: NWConnection, status: String = "200 OK", contentType: String, body: Data) {
+        let header = "HTTP/1.1 \(status)\r\nContent-Type: \(contentType)\r\nContent-Length: \(body.count)\r\nConnection: close\r\n\r\n"
+        var response = Data(header.utf8)
+        response.append(body)
+        connection.send(content: response, completion: .contentProcessed({ _ in
+            connection.cancel()
+        }))
+    }
+
     func applicationWillTerminate(_ aNotification: Notification) {
         // Insert code here to tear down your application
     }

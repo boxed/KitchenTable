@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AE2206D42BDD6B2B00077ACE /* Swifter in Frameworks */ = {isa = PBXBuildFile; productRef = AE2206D32BDD6B2B00077ACE /* Swifter */; };
 		AE2BF6972BD3ED9C00885684 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE2BF6962BD3ED9C00885684 /* AppDelegate.swift */; };
 		AE2BF6992BD3ED9D00885684 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AE2BF6982BD3ED9D00885684 /* Assets.xcassets */; };
 		AE2BF69C2BD3ED9D00885684 /* Base in Resources */ = {isa = PBXBuildFile; fileRef = AE2BF69B2BD3ED9D00885684 /* Base */; };
@@ -30,7 +29,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				AE2BF6A52BD5554000885684 /* EventKit.framework in Frameworks */,
-				AE2206D42BDD6B2B00077ACE /* Swifter in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -90,9 +88,6 @@
 			dependencies = (
 			);
 			name = KitchenTable;
-			packageProductDependencies = (
-				AE2206D32BDD6B2B00077ACE /* Swifter */,
-			);
 			productName = KitchenTable;
 			productReference = AE2BF6932BD3ED9C00885684 /* KitchenTable.app */;
 			productType = "com.apple.product-type.application";
@@ -121,9 +116,6 @@
 				Base,
 			);
 			mainGroup = AE2BF68A2BD3ED9C00885684;
-			packageReferences = (
-				AE2206D22BDD6B2B00077ACE /* XCRemoteSwiftPackageReference "swifter" */,
-			);
 			productRefGroup = AE2BF6942BD3ED9C00885684 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -369,24 +361,6 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		AE2206D22BDD6B2B00077ACE /* XCRemoteSwiftPackageReference "swifter" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/httpswift/swifter";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.5.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		AE2206D32BDD6B2B00077ACE /* Swifter */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = AE2206D22BDD6B2B00077ACE /* XCRemoteSwiftPackageReference "swifter" */;
-			productName = Swifter;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = AE2BF68B2BD3ED9C00885684 /* Project object */;
 }
