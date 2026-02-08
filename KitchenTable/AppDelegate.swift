@@ -85,7 +85,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         dateUpdater()
         
         timer = Timer.scheduledTimer(
-            withTimeInterval: 5,
+            withTimeInterval: 0.5,
             repeats: true,
             block: { [weak self] _ in
                 DispatchQueue.main.async {
@@ -162,6 +162,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if self.date_label.stringValue != new_dateLabel {
             self.date_label.stringValue = new_dateLabel
             self.dataChanged = Date()
+            self.timeOfCalendarRead = Date.distantPast
+            self.timeOfWeatherData = Date.distantPast
         }
         self.updateDisplay()
     }
