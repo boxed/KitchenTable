@@ -426,8 +426,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 let now = Date()
                 let calendar = Calendar.current
                 var targetComponents = calendar.dateComponents([.year, .month, .day], from: now)
-                targetComponents.hour = 0
-                targetComponents.minute = 10
+                targetComponents.hour = 2
+                targetComponents.minute = 0
                 targetComponents.second = 0
 
                 var secondsUntilTarget = 0
