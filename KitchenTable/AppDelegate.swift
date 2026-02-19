@@ -278,6 +278,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func readWeather() {
+        guard task == nil else { return }  // don't start a new request while one is in flight
         let s = "https://api.open-meteo.com/v1/forecast?latitude=\(loc.coordinate.latitude)&longitude=\(loc.coordinate.longitude)&daily=weather_code,temperature_2m_max,temperature_2m_min,rain_sum,snowfall_sum,wind_speed_10m_max,uv_index_max&forecast_days=1&timezone=Europe%2FBerlin"
         guard (Date().timeIntervalSince1970 - timeOfWeatherData.timeIntervalSince1970) > 60*60 else {  // don't update more than once an hour
             return
@@ -297,11 +298,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
                 if response.statusCode == 503 {
                     self.setError("failed to get data, \(response.statusCode)")
+                    self.timeOfWeatherData = Date().addingTimeInterval(-(50 * 60))  // retry in ~10 min
                     return
                 }
 
                 if error != nil {
                     self.setError("\(error.debugDescription)")
+                    self.timeOfWeatherData = Date().addingTimeInterval(-(50 * 60))  // retry in ~10 min
                     return
                 }
 
@@ -321,6 +324,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         self.timeOfWeatherData = Date()
 
                         DispatchQueue.main.async { [weak self] in
+                            self?.errors.stringValue = ""
                             guard let self = self else { return }
                             NSLog("image set...")
                             // Sun icon = needs sunscreen
@@ -366,10 +370,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 catch let error {
                     self.setError("Error parsing (\(error))")
+                    self.timeOfWeatherData = Date().addingTimeInterval(-(50 * 60))  // retry in ~10 min
                 }
             }
             else {
                 self.setError("\(error.debugDescription)")
+                self.timeOfWeatherData = Date().addingTimeInterval(-(50 * 60))  // retry in ~10 min
             }
 
         }
